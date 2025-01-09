@@ -42,10 +42,12 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "empty events",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01",
 				EndDay:      "2008-01-01",
 				Repeat: &Repeat{
 					RepeatType:     RepeatTypeWeekly,
+					DayOfWeek:      DayOfWeekMonday,
 					RepeatStopDate: _t(time.Date(2008, time.January, 2, 0, 0, 0, 0, time.UTC)),
 				},
 			},
@@ -54,19 +56,23 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "daily 3 times",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeDaily, RepeatOccurrences: 3},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeDaily, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-02", EndDay: "2008-01-02",
 				Repeat: &Repeat{RepeatType: RepeatTypeDaily, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-03", EndDay: "2008-01-03",
 				Repeat: &Repeat{RepeatType: RepeatTypeDaily, RepeatOccurrences: 3},
 			}},
@@ -74,6 +80,7 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "daily too many times",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeDaily, RepeatStopDate: _t(time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC))},
 			},
@@ -82,6 +89,7 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "weekly too many times",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekSunday, RepeatStopDate: _t(time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC))},
 			},
@@ -90,19 +98,23 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "monthly 3 times",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeMonthly, RepeatOccurrences: 3},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeMonthly, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-02-01", EndDay: "2008-02-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeMonthly, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-03-01", EndDay: "2008-03-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeMonthly, RepeatOccurrences: 3},
 			}},
@@ -110,19 +122,23 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "yearly 3 times",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeYearly, RepeatOccurrences: 3},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeYearly, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2009-01-01", EndDay: "2009-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeYearly, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2010-01-01", EndDay: "2010-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeYearly, RepeatOccurrences: 3},
 			}},
@@ -130,19 +146,23 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "weekly 3 times on Tuesday",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekTuesday, RepeatOccurrences: 3},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekTuesday, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-08", EndDay: "2008-01-08",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekTuesday, RepeatOccurrences: 3},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-15", EndDay: "2008-01-15",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekTuesday, RepeatOccurrences: 3},
 			}},
@@ -150,27 +170,33 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "weekly 5 times on Wednesday and Thursday",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-02", EndDay: "2008-01-02",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-03", EndDay: "2008-01-03",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-09", EndDay: "2008-01-09",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-10", EndDay: "2008-01-10",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-16", EndDay: "2008-01-16",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatOccurrences: 5},
 			}},
@@ -178,6 +204,7 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "repeat on Thursday but stop on Wednesday",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 2, 0, 0, 0, 0, time.UTC))},
 			},
@@ -186,27 +213,33 @@ func TestGenerateRepeatEvent(t *testing.T) {
 			desc: "weekly 5 times on Wednesday and Thursday stop on date",
 			in: Event{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-01", EndDay: "2008-01-01",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			},
 			out: []*Event{{
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-02", EndDay: "2008-01-02",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-03", EndDay: "2008-01-03",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-09", EndDay: "2008-01-09",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-10", EndDay: "2008-01-10",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			}, {
 				IsRepeating: true,
+				IsAllDay:    true,
 				StartDay:    "2008-01-16", EndDay: "2008-01-16",
 				Repeat: &Repeat{RepeatType: RepeatTypeWeekly, DayOfWeek: DayOfWeekWednesday | DayOfWeekThursday, RepeatStopDate: _t(time.Date(2008, time.January, 16, 0, 0, 0, 0, time.UTC))},
 			}},

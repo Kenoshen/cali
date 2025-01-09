@@ -56,6 +56,9 @@ type Event struct {
 	UserData map[string]interface{}
 }
 
+// TimeFormat is the time package format style for HH:mm
+const TimeFormat = "15:04"
+
 type Details struct {
 	// Id is the unique id for this event
 	Id int64

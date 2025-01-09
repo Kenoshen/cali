@@ -2,7 +2,6 @@ package cali
 
 import (
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -11,7 +10,7 @@ var (
 	ErrorRepeatOccurrenceTooLarge   = errors.New("repeat occurrences is over the maximum count")
 	ErrorRepeatOccurrenceTooSmall   = errors.New("repeat occurrences must be at least 2")
 	ErrorRepeatStopDateTooLarge     = errors.New("repeat stop date is over the maximum duration")
-	ErrorRepeatStopDateIsBeforeNow  = errors.New("repeat stop date must be after now")
+	ErrorRepeatStopDateIsBeforeStart  = errors.New("repeat stop date must be after start")
 	ErrorStartDayIsAfterEndDay      = errors.New("start day must be equal or less than end day")
 	ErrorStartTimeIsAfterEndTime    = errors.New("start time must be equal or less than end time")
 	ErrorMissingEndOfRepeat         = errors.New("repeating events must have some end")
@@ -25,19 +24,38 @@ var (
 	ErrorInvalidEndDay              = errors.New("invalid end day")
 	ErrorInvalidEndTime             = errors.New("invalid end time")
 	ErrorTooManyRepeatOccurrences   = errors.New("too many event occurrences in repeat calculation")
+	ErrorInvalidDayOfWeek           = errors.New("invalid day of week")
+	ErrorInvalidZone           = errors.New("invalid zone")
 )
 
 func Validate(e Event) error {
+	startDay, err := time.Parse(time.DateOnly, e.StartDay)
+	if err != nil {
+		return ErrorInvalidStartDay
+	}
+	_, err = time.Parse(time.DateOnly, e.EndDay)
+	if err != nil {
+		return ErrorInvalidEndDay
+	}
+	if !e.IsAllDay {
+		_, err = time.Parse(TimeFormat, e.StartTime)
+		if err != nil {
+			return ErrorInvalidStartTime
+		}
+		_, err = time.Parse(TimeFormat, e.EndTime)
+		if err != nil {
+			return ErrorInvalidEndTime
+		}
+	}
 	if e.StartDay > e.EndDay {
 		return ErrorStartDayIsAfterEndDay
 	} else if e.StartDay == e.EndDay && e.StartTime > e.EndTime {
 		return ErrorStartTimeIsAfterEndTime
 	}
 
-	_, err := time.LoadLocation(e.Zone)
+	_, err = time.LoadLocation(e.Zone)
 	if err != nil {
-		// TODO: might need to wrap this error so it can be tested easier
-		return err
+    return ErrorInvalidZone
 	}
 
 	if e.IsRepeating {
@@ -54,13 +72,9 @@ func Validate(e Event) error {
 			return ErrorMissingEndOfRepeat
 		}
 		if e.Repeat.RepeatStopDate != nil {
-			startDay, err := time.Parse(time.DateOnly, e.StartDay)
-			if err != nil {
-				return ErrorInvalidStartDay
-			}
 			if !e.Repeat.RepeatStopDate.After(startDay) {
-				return fmt.Errorf("%v: %v | %v", ErrorRepeatStopDateIsBeforeNow, e.Repeat.RepeatStopDate, startDay)
-			}
+				return ErrorRepeatStopDateIsBeforeStart
+      }
 			if e.Repeat.RepeatStopDate.After(startDay.Add(24 * time.Hour).Add(MaxRepeatDuration)) {
 				return ErrorRepeatStopDateTooLarge
 			}
@@ -70,7 +84,7 @@ func Validate(e Event) error {
 		case RepeatTypeDaily:
 		case RepeatTypeWeekly:
 			if e.Repeat.DayOfWeek <= 0 {
-
+				return ErrorInvalidDayOfWeek
 			}
 		case RepeatTypeMonthly:
 		case RepeatTypeYearly:
