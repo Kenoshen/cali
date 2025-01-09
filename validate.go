@@ -61,9 +61,9 @@ func Validate(e Event) error {
 			if !e.Repeat.RepeatStopDate.After(startDay) {
 				return fmt.Errorf("%v: %v | %v", ErrorRepeatStopDateIsBeforeNow, e.Repeat.RepeatStopDate, startDay)
 			}
-			// if e.Repeat.RepeatStopDate.After(startDay.Add(24 * time.Hour).Add(MaxRepeatDuration)) {
-			// return ErrorRepeatStopDateTooLarge
-			// }
+			if e.Repeat.RepeatStopDate.After(startDay.Add(24 * time.Hour).Add(MaxRepeatDuration)) {
+				return ErrorRepeatStopDateTooLarge
+			}
 		}
 
 		switch e.Repeat.RepeatType {

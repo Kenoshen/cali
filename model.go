@@ -41,19 +41,15 @@ type Event struct {
 	StartDay string
 	// StartTime is the HH:MM value representing the start time of this event
 	StartTime string
-	// Start is a convenience copy of the start Day, Time and Zone values
-	Start time.Time
 
 	// EndDay is the YYYY-MM-DD value representing the end day of this event
 	EndDay string
 	// EndTime is the HH:MM value representing the end time of this event
 	EndTime string
-	// End is a convenience copy of the end Day, Time and Zone values
-	End time.Time
 
-	// Created is a timestamp for when the event was created
+	// Created is a UTC timestamp for when the event was created
 	Created time.Time
-	// Updated is a timestamp for when the event was modified last
+	// Updated is a UTC timestamp for when the event was modified last
 	Updated time.Time
 
 	// UserData is a custom and optional blob of JSON saved to the event
@@ -172,8 +168,8 @@ const (
 // MaxRepeatOccurrence is set to 30 events
 const MaxRepeatOccurrence int64 = 30
 
-// MaxRepeatDuration is set to 1 year
-const MaxRepeatDuration = time.Duration(24*365) * time.Hour
+// MaxRepeatDuration is set to 2 years
+const MaxRepeatDuration = time.Duration(24*365*2) * time.Hour
 
 type Repeat struct {
 	// RepeatType is a enumeration of the valid types of repeat events (daily,
