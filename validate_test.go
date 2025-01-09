@@ -195,3 +195,64 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateAttendance(t *testing.T) {
+	testCases := []struct {
+		desc string
+		in   Attendance
+		err  error
+	}{
+		{
+			desc: "invalid attendance status",
+			in: Attendance{
+				Status: AttendanceStatus(-1),
+			},
+			err: ErrorInvalidAttendanceStatus,
+		}, {
+			desc: "missing attendance permission",
+			in: Attendance{
+				Permission: 0,
+			},
+			err: ErrorMissingAttendancePermission,
+		}, {
+			desc: "missing read permission",
+			in: Attendance{
+				Permission: PermissionModify | PermissionCancel,
+			},
+			err: ErrorIncompatibleAttendancePermission,
+		}, {
+			desc: "missing invite permission",
+			in: Attendance{
+				Permission: PermissionRead | PermissionModify,
+			},
+			err: ErrorIncompatibleAttendancePermission,
+		}, {
+			desc: "missing modify permission",
+			in: Attendance{
+				Permission: PermissionRead | PermissionInvite | PermissionCancel | PermissionDelete,
+			},
+			err: ErrorIncompatibleAttendancePermission,
+		}, {
+			desc: "missing cancel permission",
+			in: Attendance{
+				Permission: PermissionRead | PermissionInvite | PermissionModify | PermissionDelete,
+			},
+			err: ErrorIncompatibleAttendancePermission,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tc.desc)
+			err := ValidateAttendance(tc.in)
+			if tc.err != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.err, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

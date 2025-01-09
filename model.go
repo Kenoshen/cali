@@ -1,6 +1,9 @@
 package cali
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Event struct {
 	// Id is the unique id for this event
@@ -11,7 +14,7 @@ type Event struct {
 	// and can be used to update other related repeating events when this one changes
 	ParentId *int64
 	// OwnerId is the id of the user that created this event
-	OwnerId *int64
+	OwnerId int64
 	// EventType represents the overall type of the event. This is just an int, so you can set this
 	// to what ever you would like
 	EventType EventType
@@ -122,7 +125,7 @@ type Attendance struct {
 	Updated time.Time
 }
 
-type AttendanceStatus = int64
+type AttendanceStatus int64
 
 const (
 	// AttendanceStatusPending is the default and refers to a non-answer, pending attendance will still be treated
@@ -156,11 +159,11 @@ func (f *Bitmask) ToggleFlag(flag Bitmask) {
 type Permission = Bitmask
 
 const (
-	PermissionDelete = 1 << iota
-	PermissionCancel
+	PermissionRead = 1 << iota
 	PermissionModify
 	PermissionInvite
-	PermissionRead
+	PermissionCancel
+	PermissionDelete
 )
 
 const (
@@ -231,4 +234,121 @@ func dayOfWeekFromWeekday(w time.Weekday) DayOfWeek {
 
 func _t(t time.Time) *time.Time {
 	return &t
+}
+
+type Query struct {
+	// Start is an inclusive timestamp and should be compared against the end timestamp of other events (overlap)
+	Start time.Time
+	// End is an inclusive timestamp and should be compared against the start timestamp of other events (overlap)
+	End time.Time
+	// EventIds is a list of specific events that you want to query
+	EventIds []int64
+	// UserIds is a check if the user has an attendance record for the event that is not declined
+	UserIds []int64
+	// EventTypes is a check if the event has a specific event type
+	EventTypes []EventType
+	// SourceIds is an OR check on the source ids
+	SourceIds []int64
+	// Statuses is an OR search for specific statuses
+	Statuses []Status
+	// Text is an OR search for specific words
+	Text []string
+}
+
+func (q Query) Matches(event *Event) bool {
+	startDay := q.Start.Format(time.DateOnly)
+	startTime := q.Start.Format(TimeFormat)
+	endDay := q.End.Format(time.DateOnly)
+	endTime := q.End.Format(TimeFormat)
+	if event.StartDay > endDay {
+		return false
+	}
+	if event.EndDay < startDay {
+		return false
+	}
+	if event.StartDay+event.StartTime > endDay+endTime {
+		return false
+	}
+	if event.EndDay+event.EndTime < startDay+startTime {
+		return false
+	}
+	found := false
+	if len(q.EventIds) > 0 {
+		for _, id := range q.EventIds {
+			if event.Id == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+
+	if len(q.UserIds) > 0 {
+		for _, id := range q.UserIds {
+			if event.OwnerId == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+	if len(q.EventTypes) > 0 {
+		for _, eventType := range q.EventTypes {
+			if event.EventType == eventType {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+	if len(q.SourceIds) > 0 {
+		for _, id := range q.SourceIds {
+			if event.SourceId != nil && *event.SourceId == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+	if len(q.Statuses) > 0 {
+		for _, status := range q.Statuses {
+			if event.Status == status {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+	if len(q.Text) > 0 {
+		for _, text := range q.Text {
+			if strings.Contains(event.Title, text) {
+				found = true
+				break
+			}
+			if event.Description != nil && strings.Contains(*event.Description, text) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+	return true
 }

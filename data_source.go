@@ -7,30 +7,22 @@ type DataSource interface {
 	Create(event Event) (*Event, error)
 	// Update uses the given event Id field to update the event in the data store. It is also responsible
 	// for updating the Updated field with the current timestamp
-	Update(event Event) (*Event, error)
+	Update(details Details) (*Event, error)
 	// Get retrieves a single event from the data store by its Id field. If none is found, it returns nil, nil
 	Get(eventId int64) (*Event, error)
 	// Query finds a list of events from the data store using the query object to conduct the search
 	Query(q Query) ([]*Event, error)
-}
 
-type Query struct {
-	// Start is an inclusive timestamp and should be compared against the end timestamp of other events (overlap)
-	Start time.Time
-	// End is an inclusive timestamp and should be compared against the start timestamp of other events (overlap)
-	End time.Time
-	// EventIds is a list of specific events that you want to query
-	EventIds []int64
-	// UserIds is a check if the user has an attendance record for the event that is not declined
-	UserIds []int64
-	// EventTypes is a check if the event has a specific event type
-	EventTypes []EventType
-	// SourceIds is an OR check on the source ids
-	SourceIds []int64
-	// Text is an OR search for specific words
-	Text []string
-	// Statuses is an OR search for specific statuses
-	Statuses []Status
+	// AddAttendance adds a new attendance record to the data store and handles
+	// setting the Created and Updated fields
+	AddAttendance(attendance Attendance) (*Attendance, error)
+	// UpdateAttendance uses the EventId and UserId to update the attendance in
+	// the data store. Also responsible for updating the Updated field with the
+	// current timestamp.
+	UpdateAttendance(attendance Attendance) (*Attendance, error)
+	// GetAttendance retrieves a single Attendance by the EventId and UserId fields.
+	// If none is found, it returns nil, nil
+	GetAttendance(eventId int64, userId int64) (*Attendance, error)
 }
 
 // InMemoryDataSource implements the DataSource interface and is useful for a mock data source
@@ -41,18 +33,98 @@ type InMemoryDataSource struct {
 }
 
 func (d *InMemoryDataSource) Create(event Event) (*Event, error) {
-	return nil, nil
+	err := Validate(event)
+	if err != nil {
+		return nil, err
+	}
+	event.Id = d.id()
+	event.Created = time.Now()
+	event.Updated = event.Created
+
+	_, err = d.AddAttendance(Attendance{
+		EventId:    event.Id,
+		UserId:     event.OwnerId,
+		Status:     AttendanceStatusConfirmed,
+		Permission: PermissionOwner,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	d.events = append(d.events, &event)
+
+	return &event, nil
 }
 
-func (d *InMemoryDataSource) Update(event Event) (*Event, error) {
+func (d *InMemoryDataSource) Update(details Details) (*Event, error) {
+	for _, other := range d.events {
+		if other.Id == details.Id {
+			other.Title = details.Title
+			other.Description = details.Description
+			other.Url = details.Url
+			other.IsAllDay = details.IsAllDay
+			other.Zone = details.Zone
+			other.StartDay = details.StartDay
+			other.StartTime = details.StartTime
+			other.EndDay = details.EndDay
+			other.EndTime = details.EndTime
+			other.Updated = time.Now()
+			return other, nil
+		}
+	}
 	return nil, nil
 }
 
 func (d *InMemoryDataSource) Get(eventId int64) (*Event, error) {
+	for _, event := range d.events {
+		if event.Id == eventId {
+			return event, nil
+		}
+	}
 	return nil, nil
 }
 
 func (d *InMemoryDataSource) Query(q Query) ([]*Event, error) {
+	var result []*Event
+
+	for _, event := range d.events {
+		if q.Matches(event) {
+			result = append(result, event)
+		}
+	}
+
+	return result, nil
+}
+
+func (d *InMemoryDataSource) AddAttendance(a Attendance) (*Attendance, error) {
+	a.Created = time.Now()
+	a.Updated = a.Created
+	err := ValidateAttendance(a)
+	if err != nil {
+		return nil, err
+	}
+	d.invites = append(d.invites, &a)
+	return &a, nil
+}
+
+func (d *InMemoryDataSource) UpdateAttendance(a Attendance) (*Attendance, error) {
+	for _, attendance := range d.invites {
+		if attendance.EventId == a.EventId && attendance.UserId == a.UserId {
+			attendance.Status = a.Status
+			attendance.Permission = a.Permission
+			attendance.Updated = time.Now()
+			return attendance, nil
+		}
+	}
+	return nil, nil
+}
+
+func (d *InMemoryDataSource) GetAttendance(eventId int64, userId int64) (*Attendance, error) {
+	for _, attendance := range d.invites {
+		if attendance.EventId == eventId && attendance.UserId == userId {
+			return attendance, nil
+		}
+	}
 	return nil, nil
 }
 

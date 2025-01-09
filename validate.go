@@ -6,26 +6,29 @@ import (
 )
 
 var (
-	ErrorNotRepeatingEvent          = errors.New("must be a repeating event")
-	ErrorRepeatOccurrenceTooLarge   = errors.New("repeat occurrences is over the maximum count")
-	ErrorRepeatOccurrenceTooSmall   = errors.New("repeat occurrences must be at least 2")
-	ErrorRepeatStopDateTooLarge     = errors.New("repeat stop date is over the maximum duration")
-	ErrorRepeatStopDateIsBeforeStart  = errors.New("repeat stop date must be after start")
-	ErrorStartDayIsAfterEndDay      = errors.New("start day must be equal or less than end day")
-	ErrorStartTimeIsAfterEndTime    = errors.New("start time must be equal or less than end time")
-	ErrorMissingEndOfRepeat         = errors.New("repeating events must have some end")
-	ErrorEmptyRepeatingEvents       = errors.New("repeating event list is empty")
-	ErrorMissingRepeatPattern       = errors.New("missing repeat pattern")
-	ErrorInvalidRepeatType          = errors.New("invalid repeat type")
-	ErrorSeparationCountLessThanOne = errors.New("separation count must be 1 or greater")
-	ErrorMissingDayOfWeek           = errors.New("missing day of the week (SMTWTFS)")
-	ErrorInvalidStartDay            = errors.New("invalid start day")
-	ErrorInvalidStartTime           = errors.New("invalid start time")
-	ErrorInvalidEndDay              = errors.New("invalid end day")
-	ErrorInvalidEndTime             = errors.New("invalid end time")
-	ErrorTooManyRepeatOccurrences   = errors.New("too many event occurrences in repeat calculation")
-	ErrorInvalidDayOfWeek           = errors.New("invalid day of week")
-	ErrorInvalidZone           = errors.New("invalid zone")
+	ErrorNotRepeatingEvent                = errors.New("must be a repeating event")
+	ErrorRepeatOccurrenceTooLarge         = errors.New("repeat occurrences is over the maximum count")
+	ErrorRepeatOccurrenceTooSmall         = errors.New("repeat occurrences must be at least 2")
+	ErrorRepeatStopDateTooLarge           = errors.New("repeat stop date is over the maximum duration")
+	ErrorRepeatStopDateIsBeforeStart      = errors.New("repeat stop date must be after start")
+	ErrorStartDayIsAfterEndDay            = errors.New("start day must be equal or less than end day")
+	ErrorStartTimeIsAfterEndTime          = errors.New("start time must be equal or less than end time")
+	ErrorMissingEndOfRepeat               = errors.New("repeating events must have some end")
+	ErrorEmptyRepeatingEvents             = errors.New("repeating event list is empty")
+	ErrorMissingRepeatPattern             = errors.New("missing repeat pattern")
+	ErrorInvalidRepeatType                = errors.New("invalid repeat type")
+	ErrorSeparationCountLessThanOne       = errors.New("separation count must be 1 or greater")
+	ErrorMissingDayOfWeek                 = errors.New("missing day of the week (SMTWTFS)")
+	ErrorInvalidStartDay                  = errors.New("invalid start day")
+	ErrorInvalidStartTime                 = errors.New("invalid start time")
+	ErrorInvalidEndDay                    = errors.New("invalid end day")
+	ErrorInvalidEndTime                   = errors.New("invalid end time")
+	ErrorTooManyRepeatOccurrences         = errors.New("too many event occurrences in repeat calculation")
+	ErrorInvalidDayOfWeek                 = errors.New("invalid day of week")
+	ErrorInvalidZone                      = errors.New("invalid zone")
+	ErrorInvalidAttendanceStatus          = errors.New("invalid attendance status")
+	ErrorMissingAttendancePermission      = errors.New("missing attendance permission")
+	ErrorIncompatibleAttendancePermission = errors.New("incompatible attendance permission")
 )
 
 func Validate(e Event) error {
@@ -55,7 +58,7 @@ func Validate(e Event) error {
 
 	_, err = time.LoadLocation(e.Zone)
 	if err != nil {
-    return ErrorInvalidZone
+		return ErrorInvalidZone
 	}
 
 	if e.IsRepeating {
@@ -74,7 +77,7 @@ func Validate(e Event) error {
 		if e.Repeat.RepeatStopDate != nil {
 			if !e.Repeat.RepeatStopDate.After(startDay) {
 				return ErrorRepeatStopDateIsBeforeStart
-      }
+			}
 			if e.Repeat.RepeatStopDate.After(startDay.Add(24 * time.Hour).Add(MaxRepeatDuration)) {
 				return ErrorRepeatStopDateTooLarge
 			}
@@ -91,6 +94,36 @@ func Validate(e Event) error {
 		default:
 			return ErrorInvalidRepeatType
 		}
+	}
+
+	return nil
+}
+
+func ValidateAttendance(a Attendance) error {
+	switch a.Status {
+	case AttendanceStatusPending, AttendanceStatusConfirmed, AttendanceStatusDeclined:
+	default:
+		return ErrorInvalidAttendanceStatus
+	}
+
+	if a.Permission <= 0 {
+		return ErrorMissingAttendancePermission
+	}
+
+	if !a.Permission.HasFlag(PermissionRead) && (a.Permission.HasFlag(PermissionDelete) || a.Permission.HasFlag(PermissionCancel) || a.Permission.HasFlag(PermissionInvite) || a.Permission.HasFlag(PermissionModify)) {
+		return ErrorIncompatibleAttendancePermission
+	}
+
+	if !a.Permission.HasFlag(PermissionInvite) && a.Permission.HasFlag(PermissionModify) {
+		return ErrorIncompatibleAttendancePermission
+	}
+
+	if !a.Permission.HasFlag(PermissionModify) && (a.Permission.HasFlag(PermissionDelete) || a.Permission.HasFlag(PermissionCancel)) {
+		return ErrorIncompatibleAttendancePermission
+	}
+
+	if !a.Permission.HasFlag(PermissionCancel) && a.Permission.HasFlag(PermissionDelete) {
+		return ErrorIncompatibleAttendancePermission
 	}
 
 	return nil
