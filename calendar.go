@@ -1,22 +1,22 @@
 package cali
 
 type Calendar struct {
-	dataSource DataSource
+	dataStore DataStore
 }
 
-func NewCalendar(dataSource DataSource) *Calendar {
+func NewCalendar(dataStore DataStore) *Calendar {
 	c := &Calendar{
-		dataSource: dataSource,
+		dataStore: dataStore,
 	}
 	return c
 }
 
 func (c *Calendar) Get(eventId int64) (*Event, error) {
-	return c.dataSource.Get(eventId)
+	return c.dataStore.Get(eventId)
 }
 
 func (c *Calendar) Query(q Query) ([]*Event, error) {
-	return c.dataSource.Query(q)
+	return c.dataStore.Query(q)
 }
 
 func (c *Calendar) Create(e Event) (*Event, int64, error) {
@@ -25,7 +25,7 @@ func (c *Calendar) Create(e Event) (*Event, int64, error) {
 	}
 
 	if !e.IsRepeating {
-		newEvent, err := c.dataSource.Create(e)
+		newEvent, err := c.dataStore.Create(e)
 		var count int64 = 0
 		if newEvent != nil {
 			count++
@@ -45,7 +45,7 @@ func (c *Calendar) Create(e Event) (*Event, int64, error) {
 	var results []*Event
 	var count int64 = 0
 	for _, event := range events {
-		newEvent, err := c.dataSource.Create(*event)
+		newEvent, err := c.dataStore.Create(*event)
 		if err != nil {
 			return nil, 0, err
 		}

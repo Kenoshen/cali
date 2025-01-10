@@ -2,7 +2,7 @@ package cali
 
 import "time"
 
-type DataSource interface {
+type DataStore interface {
 	// Create should save an event in the data store and handle setting the Created and Updated and Id fields
 	Create(event Event) (*Event, error)
 	// Update uses the given event Id field to update the event in the data store. It is also responsible
@@ -25,14 +25,14 @@ type DataSource interface {
 	GetAttendance(eventId int64, userId int64) (*Attendance, error)
 }
 
-// InMemoryDataSource implements the DataSource interface and is useful for a mock data source
-type InMemoryDataSource struct {
+// InMemoryDataStore implements the DataStore interface and is useful for a mock data source
+type InMemoryDataStore struct {
 	events  []*Event
 	invites []*Attendance
 	curId   int64
 }
 
-func (d *InMemoryDataSource) Create(event Event) (*Event, error) {
+func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	err := Validate(event)
 	if err != nil {
 		return nil, err
@@ -56,12 +56,13 @@ func (d *InMemoryDataSource) Create(event Event) (*Event, error) {
 	return &event, nil
 }
 
-func (d *InMemoryDataSource) Update(details Details) (*Event, error) {
+func (d *InMemoryDataStore) Update(details Details) (*Event, error) {
 	for _, other := range d.events {
 		if other.Id == details.Id {
 			other.Title = details.Title
 			other.Description = details.Description
 			other.Url = details.Url
+			other.Status = details.Status
 			other.IsAllDay = details.IsAllDay
 			other.Zone = details.Zone
 			other.StartDay = details.StartDay
@@ -75,7 +76,7 @@ func (d *InMemoryDataSource) Update(details Details) (*Event, error) {
 	return nil, nil
 }
 
-func (d *InMemoryDataSource) Get(eventId int64) (*Event, error) {
+func (d *InMemoryDataStore) Get(eventId int64) (*Event, error) {
 	for _, event := range d.events {
 		if event.Id == eventId {
 			return event, nil
@@ -84,7 +85,7 @@ func (d *InMemoryDataSource) Get(eventId int64) (*Event, error) {
 	return nil, nil
 }
 
-func (d *InMemoryDataSource) Query(q Query) ([]*Event, error) {
+func (d *InMemoryDataStore) Query(q Query) ([]*Event, error) {
 	var result []*Event
 
 	for _, event := range d.events {
@@ -96,7 +97,7 @@ func (d *InMemoryDataSource) Query(q Query) ([]*Event, error) {
 	return result, nil
 }
 
-func (d *InMemoryDataSource) AddAttendance(a Attendance) (*Attendance, error) {
+func (d *InMemoryDataStore) AddAttendance(a Attendance) (*Attendance, error) {
 	a.Created = time.Now()
 	a.Updated = a.Created
 	err := ValidateAttendance(a)
@@ -107,7 +108,7 @@ func (d *InMemoryDataSource) AddAttendance(a Attendance) (*Attendance, error) {
 	return &a, nil
 }
 
-func (d *InMemoryDataSource) UpdateAttendance(a Attendance) (*Attendance, error) {
+func (d *InMemoryDataStore) UpdateAttendance(a Attendance) (*Attendance, error) {
 	for _, attendance := range d.invites {
 		if attendance.EventId == a.EventId && attendance.UserId == a.UserId {
 			attendance.Status = a.Status
@@ -119,7 +120,7 @@ func (d *InMemoryDataSource) UpdateAttendance(a Attendance) (*Attendance, error)
 	return nil, nil
 }
 
-func (d *InMemoryDataSource) GetAttendance(eventId int64, userId int64) (*Attendance, error) {
+func (d *InMemoryDataStore) GetAttendance(eventId int64, userId int64) (*Attendance, error) {
 	for _, attendance := range d.invites {
 		if attendance.EventId == eventId && attendance.UserId == userId {
 			return attendance, nil
@@ -129,7 +130,7 @@ func (d *InMemoryDataSource) GetAttendance(eventId int64, userId int64) (*Attend
 }
 
 // id generates the next id value
-func (d *InMemoryDataSource) id() int64 {
+func (d *InMemoryDataStore) id() int64 {
 	d.curId++
 	return d.curId
 }
