@@ -3,7 +3,6 @@ package cali
 import (
 	"strings"
 	"time"
-  "fmt"
 )
 
 type Event struct {
@@ -112,34 +111,36 @@ const (
 // EventType must be defined by the user of this library
 type EventType = int64
 
-// Attendance is a record of an invitation to a specific user for a specific event
-type Attendance struct {
+// Invite is a record of an invitation to a specific user for a specific event
+type Invite struct {
 	// EventId is a reference to the unique identifier for a specific event
 	EventId int64
-	// UserId is the reference for the user who's attendance is in question
+	// UserId is the reference for the user who's invite is in question
 	UserId int64
-	// Status refers to the response of the user to the attendance of an event
+	// Status refers to the response of the user to the invite of an event
 	// and defaults to pending which is kind of like a soft confirm
-	Status AttendanceStatus
+	Status InviteStatus
 	// Permission is a bitmask for the allowed permissions for this user on this event
 	Permission Permission
-	// Created is a timestamp for when the attendance invitation was created
+	// Created is a timestamp for when the invite invitation was created
 	Created time.Time
-	// Updated is a timestamp for when the attendance invitation was modified last
+	// Updated is a timestamp for when the invite invitation was modified last
 	Updated time.Time
 }
 
-type AttendanceStatus int64
+type InviteStatus int64
 
 const (
-	// AttendanceStatusPending is the default and refers to a non-answer, pending attendance will still be treated
+	// InviteStatusPending is the default and refers to a non-answer, pending invite will still be treated
 	// as a soft confirm and the event will remain on the user's calendar but be outlined
-	AttendanceStatusPending AttendanceStatus = 0
-	// AttendanceStatusConfirmed is an acknowledgment that the user is going to attend the event
-	AttendanceStatusConfirmed AttendanceStatus = 1
-	// AttendanceStatusDeclined is when the user decides tho not attend the event, if all users decline an event
+	InviteStatusPending InviteStatus = 0
+	// InviteStatusConfirmed is an acknowledgment that the user is going to attend the event
+	InviteStatusConfirmed InviteStatus = 1
+	// InviteStatusDeclined is when the user decides tho not attend the event, if all users decline an event
 	// it becomes abandoned
-	AttendanceStatusDeclined AttendanceStatus = 2
+	InviteStatusDeclined InviteStatus = 2
+	// InviteStatusRevoked is when a user with the correct permission forcibly removes a user's invitation
+	InviteStatusRevoked InviteStatus = -1
 )
 
 type Bitmask uint32
@@ -247,7 +248,9 @@ type Query struct {
 	End time.Time
 	// EventIds is a list of specific events that you want to query
 	EventIds []int64
-	// UserIds is a check if the user has an attendance record for the event that is not declined
+	// ParentIds is a list of parent ids that should be searched for and will find all events that have a match to the parent id
+	ParentIds []int64
+	// UserIds is a check if the user has an invite record for the event that is not declined
 	UserIds []int64
 	// EventTypes is a check if the event has a specific event type
 	EventTypes []EventType
@@ -264,7 +267,6 @@ func (q Query) Matches(event *Event) bool {
 	startTime := q.Start.Format(TimeFormat)
 	endDay := q.End.Format(time.DateOnly)
 	endTime := q.End.Format(TimeFormat)
-	fmt.Println(event.StartDay, " - ", event.EndDay, "    ", startDay, " - ", endDay)
 	if event.StartDay > endDay {
 		return false
 	}
@@ -357,3 +359,11 @@ func (q Query) Matches(event *Event) bool {
 	}
 	return true
 }
+
+type RepeatEditType int64
+
+const (
+	RepeatEditTypeThis         RepeatEditType = 0
+	RepeatEditTypeAll          RepeatEditType = 1
+	RepeatEditTypeThisAndAfter RepeatEditType = 2
+)

@@ -196,48 +196,48 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestValidateAttendance(t *testing.T) {
+func TestValidateInvite(t *testing.T) {
 	testCases := []struct {
 		desc string
-		in   Attendance
+		in   Invite
 		err  error
 	}{
 		{
-			desc: "invalid attendance status",
-			in: Attendance{
-				Status: AttendanceStatus(-1),
+			desc: "invalid invite status",
+			in: Invite{
+				Status: InviteStatus(-1),
 			},
-			err: ErrorInvalidAttendanceStatus,
-		}, {
-			desc: "missing attendance permission",
-			in: Attendance{
-				Permission: 0,
-			},
-			err: ErrorMissingAttendancePermission,
-		}, {
-			desc: "missing read permission",
-			in: Attendance{
-				Permission: PermissionModify | PermissionCancel,
-			},
-			err: ErrorIncompatibleAttendancePermission,
+			err: ErrorInvalidInviteStatus,
 		}, {
 			desc: "missing invite permission",
-			in: Attendance{
+			in: Invite{
+				Permission: 0,
+			},
+			err: ErrorMissingInvitePermission,
+		}, {
+			desc: "missing read permission",
+			in: Invite{
+				Permission: PermissionModify | PermissionCancel,
+			},
+			err: ErrorIncompatibleInvitePermission,
+		}, {
+			desc: "missing invite permission",
+			in: Invite{
 				Permission: PermissionRead | PermissionModify,
 			},
-			err: ErrorIncompatibleAttendancePermission,
+			err: ErrorIncompatibleInvitePermission,
 		}, {
 			desc: "missing modify permission",
-			in: Attendance{
+			in: Invite{
 				Permission: PermissionRead | PermissionInvite | PermissionCancel | PermissionDelete,
 			},
-			err: ErrorIncompatibleAttendancePermission,
+			err: ErrorIncompatibleInvitePermission,
 		}, {
 			desc: "missing cancel permission",
-			in: Attendance{
+			in: Invite{
 				Permission: PermissionRead | PermissionInvite | PermissionModify | PermissionDelete,
 			},
-			err: ErrorIncompatibleAttendancePermission,
+			err: ErrorIncompatibleInvitePermission,
 		},
 	}
 
@@ -246,7 +246,7 @@ func TestValidateAttendance(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			t.Log(tc.desc)
-			err := ValidateAttendance(tc.in)
+			err := ValidateInvite(tc.in)
 			if tc.err != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.err, err)

@@ -28,12 +28,12 @@ func TestInMemoryDataStore(t *testing.T) {
 
 	// save a copy of the original before it gets updated
 	original := *a
-	a2, err := d.Update(Details{Id: a.Id, Status: StatusCanceled, StartDay: "2008-01-01", EndDay: "2008-01-01"})
+	err = d.SetStatus(a.Id, StatusCanceled)
 	require.NoError(t, err)
 	assert.Len(t, d.events, 1)
 	assert.Len(t, d.invites, 1)
-	assert.NotEqual(t, a2, &original)
-	assert.Equal(t, a2.Status, StatusCanceled)
+	assert.NotEqual(t, original, *a)
+	assert.Equal(t, a.Status, StatusCanceled)
 
 	d.Create(Event{Status: StatusActive, StartDay: "2008-01-01", EndDay: "2008-01-01", IsAllDay: true})
 	d.Create(Event{Status: StatusRemoved, StartDay: "2008-01-01", EndDay: "2008-01-01", IsAllDay: true})

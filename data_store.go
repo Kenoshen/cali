@@ -5,30 +5,39 @@ import "time"
 type DataStore interface {
 	// Create should save an event in the data store and handle setting the Created and Updated and Id fields
 	Create(event Event) (*Event, error)
-	// Update uses the given event Id field to update the event in the data store. It is also responsible
-	// for updating the Updated field with the current timestamp
-	Update(details Details) (*Event, error)
+	// SetTime updates the time values for a specific event
+	SetTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error
+	// SetStatus applies the given status to the event. If the event already has the status it returns nil
+	SetStatus(eventId int64, status Status) error
+	// SetTitle updates the event with the given title
+	SetTitle(eventId int64, title string) error
+	// SetDescription updates the event with the given description
+	SetDescription(eventId int64, description *string) error
+	// SetUrl updates the event with the url value
+	SetUrl(eventId int64, url *string) error
+	// SetUserData updates the event with the user data
+	SetUserData(eventId int64, userData map[string]interface{}) error
 	// Get retrieves a single event from the data store by its Id field. If none is found, it returns nil, nil
 	Get(eventId int64) (*Event, error)
 	// Query finds a list of events from the data store using the query object to conduct the search
 	Query(q Query) ([]*Event, error)
 
-	// AddAttendance adds a new attendance record to the data store and handles
+	// AddInvite adds a new invite record to the data store and handles
 	// setting the Created and Updated fields
-	AddAttendance(attendance Attendance) (*Attendance, error)
-	// UpdateAttendance uses the EventId and UserId to update the attendance in
-	// the data store. Also responsible for updating the Updated field with the
-	// current timestamp.
-	UpdateAttendance(attendance Attendance) (*Attendance, error)
-	// GetAttendance retrieves a single Attendance by the EventId and UserId fields.
+	AddInvite(invite Invite) (*Invite, error)
+	// SetInviteStatus uses the EventId and UserId to update the status of the invite and updates the Updated date too
+	SetInviteStatus(eventId, userId int64, status InviteStatus) error
+	// SetInvitePermissions uses the EventId and UserId to update the permissions of the invite and updates the Updated date too
+	SetInvitePermissions(eventId, userId int64, permissions Permission) error
+	// GetInvite retrieves a single Invite by the EventId and UserId fields.
 	// If none is found, it returns nil, nil
-	GetAttendance(eventId int64, userId int64) (*Attendance, error)
+	GetInvite(eventId, userId int64) (*Invite, error)
 }
 
 // InMemoryDataStore implements the DataStore interface and is useful for a mock data source
 type InMemoryDataStore struct {
 	events  []*Event
-	invites []*Attendance
+	invites []*Invite
 	curId   int64
 }
 
@@ -41,10 +50,10 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	event.Created = time.Now()
 	event.Updated = event.Created
 
-	_, err = d.AddAttendance(Attendance{
+	_, err = d.AddInvite(Invite{
 		EventId:    event.Id,
 		UserId:     event.OwnerId,
-		Status:     AttendanceStatusConfirmed,
+		Status:     InviteStatusConfirmed,
 		Permission: PermissionOwner,
 	})
 	if err != nil {
@@ -56,24 +65,77 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	return &event, nil
 }
 
-func (d *InMemoryDataStore) Update(details Details) (*Event, error) {
+func (d *InMemoryDataStore) SetTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error {
+	if err := ValidTimes(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
+		return err
+	}
+
 	for _, other := range d.events {
-		if other.Id == details.Id {
-			other.Title = details.Title
-			other.Description = details.Description
-			other.Url = details.Url
-			other.Status = details.Status
-			other.IsAllDay = details.IsAllDay
-			other.Zone = details.Zone
-			other.StartDay = details.StartDay
-			other.StartTime = details.StartTime
-			other.EndDay = details.EndDay
-			other.EndTime = details.EndTime
-			other.Updated = time.Now()
-			return other, nil
+		if other.Id == eventId {
+			other.StartDay = startDay
+			other.StartTime = startTime
+			other.EndDay = endDay
+			other.EndTime = endTime
+			other.IsAllDay = isAllDay
+			other.Zone = zone
+			return nil
 		}
 	}
-	return nil, nil
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetStatus(eventId int64, status Status) error {
+	if !ValidStatus(status) {
+		return ErrorInvalidStatus
+	}
+
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.Status = status
+			return nil
+		}
+	}
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetTitle(eventId int64, title string) error {
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.Title = title
+			return nil
+		}
+	}
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetDescription(eventId int64, description *string) error {
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.Description = description
+			return nil
+		}
+	}
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetUrl(eventId int64, url *string) error {
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.Url = url
+			return nil
+		}
+	}
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetUserData(eventId int64, userData map[string]interface{}) error {
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.UserData = userData
+			return nil
+		}
+	}
+	return ErrorEventNotFound
 }
 
 func (d *InMemoryDataStore) Get(eventId int64) (*Event, error) {
@@ -97,10 +159,10 @@ func (d *InMemoryDataStore) Query(q Query) ([]*Event, error) {
 	return result, nil
 }
 
-func (d *InMemoryDataStore) AddAttendance(a Attendance) (*Attendance, error) {
+func (d *InMemoryDataStore) AddInvite(a Invite) (*Invite, error) {
 	a.Created = time.Now()
 	a.Updated = a.Created
-	err := ValidateAttendance(a)
+	err := ValidateInvite(a)
 	if err != nil {
 		return nil, err
 	}
@@ -108,22 +170,32 @@ func (d *InMemoryDataStore) AddAttendance(a Attendance) (*Attendance, error) {
 	return &a, nil
 }
 
-func (d *InMemoryDataStore) UpdateAttendance(a Attendance) (*Attendance, error) {
-	for _, attendance := range d.invites {
-		if attendance.EventId == a.EventId && attendance.UserId == a.UserId {
-			attendance.Status = a.Status
-			attendance.Permission = a.Permission
-			attendance.Updated = time.Now()
-			return attendance, nil
+func (d *InMemoryDataStore) SetInviteStatus(eventId, userId int64, status InviteStatus) error {
+	for _, invite := range d.invites {
+		if invite.EventId == eventId && invite.UserId == userId {
+			invite.Status = status
+			invite.Updated = time.Now()
+			return nil
 		}
 	}
-	return nil, nil
+	return ErrorInviteNotFound
 }
 
-func (d *InMemoryDataStore) GetAttendance(eventId int64, userId int64) (*Attendance, error) {
-	for _, attendance := range d.invites {
-		if attendance.EventId == eventId && attendance.UserId == userId {
-			return attendance, nil
+func (d *InMemoryDataStore) SetInvitePermissions(eventId, userId int64, permissions Permission) error {
+	for _, invite := range d.invites {
+		if invite.EventId == eventId && invite.UserId == userId {
+			invite.Permission = permissions
+			invite.Updated = time.Now()
+			return nil
+		}
+	}
+	return ErrorInviteNotFound
+}
+
+func (d *InMemoryDataStore) GetInvite(eventId int64, userId int64) (*Invite, error) {
+	for _, invite := range d.invites {
+		if invite.EventId == eventId && invite.UserId == userId {
+			return invite, nil
 		}
 	}
 	return nil, nil
