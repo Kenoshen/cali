@@ -32,6 +32,7 @@ var (
 	ErrorEventNotFound                = errors.New("there is no event with that id")
 	ErrorInvalidStatus                = errors.New("invalid status")
 	ErrorInviteNotFound               = errors.New("invitation not found")
+	ErrorInvalidRepeatEditType        = errors.New("invalid repeat edit type")
 )
 
 // VAlidate makes sure the event object doesn't have conflicting values
@@ -112,7 +113,9 @@ func ValidRepeat(e Event) error {
 			return ErrorMissingEndOfRepeat
 		}
 		if e.Repeat.RepeatStopDate != nil {
-			if !e.Repeat.RepeatStopDate.After(startDay) {
+			// allows stop date to be equal to start day since stop date
+			// is inclusive
+			if e.Repeat.RepeatStopDate.Before(startDay) {
 				return ErrorRepeatStopDateIsBeforeStart
 			}
 			if e.Repeat.RepeatStopDate.After(startDay.Add(24 * time.Hour).Add(MaxRepeatDuration)) {

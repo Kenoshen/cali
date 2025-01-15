@@ -32,7 +32,12 @@ func (c *Calendar) Get(eventId int64) (*Event, error) {
 
 // Query collects a list of events using the provided query parameters
 func (c *Calendar) Query(q Query) ([]*Event, error) {
-	return c.dataStore.Query(q)
+	results, err := c.dataStore.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	Sort(results)
+	return results, err
 }
 
 // Create an event with the given values. Created and Updated fields will be set automatically. Repeating events will also be created automatically.
@@ -61,18 +66,25 @@ func (c *Calendar) Create(e Event) (*Event, int64, error) {
 
 	var results []*Event
 	var count int64 = 0
+  var parentId *int64
 	for _, event := range events {
+    if parentId != nil {
+      event.ParentId = parentId
+    }
 		newEvent, err := c.dataStore.Create(*event)
 		if err != nil {
 			return nil, 0, err
 		}
 		if newEvent != nil {
 			count++
+      if parentId == nil {
+        parentId = &newEvent.Id
+      }
 		}
 		results = append(results, newEvent)
 	}
 
-	return events[0], count, nil
+	return results[0], count, nil
 }
 
 // UpdateTime changes the day and time values of the event
@@ -85,7 +97,45 @@ func (c *Calendar) UpdateTime(eventId int64, startDay string, startTime string, 
 
 // Cancel sets the status of the event to StatusCanceled
 func (c *Calendar) Cancel(eventId int64, editType RepeatEditType) error {
-	return c.dataStore.SetStatus(eventId, StatusCanceled)
+	switch editType {
+	case RepeatEditTypeThis:
+		return c.dataStore.SetStatus(eventId, StatusCanceled)
+	case RepeatEditTypeAll:
+		e, err := c.Get(eventId)
+		if err != nil {
+			return err
+		}
+		if e == nil {
+			return ErrorEventNotFound
+		}
+		events, err := c.getAllRepeatingEvents(*e)
+		fmt.Println("All repeating events:", len(events))
+		for _, event := range events {
+			err = c.dataStore.SetStatus(event.Id, StatusCanceled)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case RepeatEditTypeThisAndAfter:
+		e, err := c.Get(eventId)
+		if err != nil {
+			return err
+		}
+		if e == nil {
+			return ErrorEventNotFound
+		}
+		events, err := c.getAllRepeatingEventsThisAndAfter(*e)
+		for _, event := range events {
+			err = c.dataStore.SetStatus(event.Id, StatusCanceled)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return ErrorInvalidRepeatEditType
 }
 
 // Remove sets the status of the event to StatusRemoved (we never delete things here)

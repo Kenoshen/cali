@@ -1,6 +1,8 @@
 package cali
 
-import "time"
+import (
+	"time"
+)
 
 type DataStore interface {
 	// Create should save an event in the data store and handle setting the Created and Updated and Id fields
@@ -50,6 +52,13 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	event.Created = time.Now()
 	event.Updated = event.Created
 
+  // if the event is a repeating event, but doesn't have the ParentId
+  // field set, then this must be the first event of the repeat and 
+  // should also have its own Id as the ParentId
+  if event.IsRepeating && event.ParentId == nil {
+    event.ParentId = &event.Id
+  }
+
 	_, err = d.AddInvite(Invite{
 		EventId:    event.Id,
 		UserId:     event.OwnerId,
@@ -61,7 +70,6 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	}
 
 	d.events = append(d.events, &event)
-
 	return &event, nil
 }
 

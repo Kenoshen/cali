@@ -1,6 +1,7 @@
 package cali
 
 import (
+	"sort"
 	"strings"
 	"time"
 )
@@ -188,10 +189,12 @@ type Repeat struct {
 	RepeatType RepeatType
 	// DayOfWeek is a bitmask of the days of the week (SMTWTFS)
 	DayOfWeek DayOfWeek
-	// RepeatOccurrences is a number of times the event should repeat. It can't
-	// be more than MaxRepeatOccurrence.
+	// RepeatOccurrences is a number of times the event should repeat.
+	// It should be 0 if RepeatStopDate is not nil.
+	// It can't be more than MaxRepeatOccurrence.
 	RepeatOccurrences int64
 	// RepeatStopDate is a timestamp for when the repeating event should stop.
+	// It should be nil if RepeatOccurrences > 1.
 	// It can't be more than MaxRepeatDuration.
 	RepeatStopDate *time.Time
 }
@@ -293,6 +296,19 @@ func (q Query) Matches(event *Event) bool {
 		found = false
 	}
 
+	if len(q.ParentIds) > 0 {
+		for _, id := range q.ParentIds {
+			if event.ParentId != nil && *event.ParentId == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		found = false
+	}
+
 	if len(q.UserIds) > 0 {
 		for _, id := range q.UserIds {
 			if event.OwnerId == id {
@@ -305,6 +321,7 @@ func (q Query) Matches(event *Event) bool {
 		}
 		found = false
 	}
+
 	if len(q.EventTypes) > 0 {
 		for _, eventType := range q.EventTypes {
 			if event.EventType == eventType {
@@ -317,6 +334,7 @@ func (q Query) Matches(event *Event) bool {
 		}
 		found = false
 	}
+
 	if len(q.SourceIds) > 0 {
 		for _, id := range q.SourceIds {
 			if event.SourceId != nil && *event.SourceId == id {
@@ -329,6 +347,7 @@ func (q Query) Matches(event *Event) bool {
 		}
 		found = false
 	}
+
 	if len(q.Statuses) > 0 {
 		for _, status := range q.Statuses {
 			if event.Status == status {
@@ -341,6 +360,7 @@ func (q Query) Matches(event *Event) bool {
 		}
 		found = false
 	}
+
 	if len(q.Text) > 0 {
 		for _, text := range q.Text {
 			if strings.Contains(event.Title, text) {
@@ -357,6 +377,7 @@ func (q Query) Matches(event *Event) bool {
 		}
 		found = false
 	}
+
 	return true
 }
 
@@ -367,3 +388,28 @@ const (
 	RepeatEditTypeAll          RepeatEditType = 1
 	RepeatEditTypeThisAndAfter RepeatEditType = 2
 )
+
+// Sort events by their start day and time where earlier events
+// are first and later events are last
+func Sort(e []*Event) []*Event {
+	sort.SliceStable(e, func(a int, b int) bool {
+		A := e[a]
+		B := e[b]
+		if A == nil {
+			return true
+		}
+		if B == nil {
+			return false
+		}
+		if A.StartDay < B.StartDay {
+			return true
+		} else if A.StartDay > B.StartDay {
+			return false
+		}
+		if A.StartTime <= B.StartTime {
+			return true
+		}
+		return false
+	})
+	return e
+}

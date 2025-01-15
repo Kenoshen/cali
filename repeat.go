@@ -130,4 +130,5 @@ func GenerateRepeatEvents(e Event) ([]*Event, error) {
 	}
 
 	return events, nil
+
 }
