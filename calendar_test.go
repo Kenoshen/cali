@@ -98,15 +98,9 @@ func TestRepeatEventsOnCalendar(t *testing.T) {
 	assert.Len(t, d.events, 6)
 	require.NotNil(t, a)
 
-	events, err := c.Query(Query{
-		Start: time.Date(2007, time.January, 1, 0, 0, 0, 0, time.UTC),
-		End:   time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC),
-	})
+	events, err := c.Query(Query{})
 	require.NoError(t, err)
 	assert.Len(t, events, 6)
-	foreach(events, func(e Event) {
-		t.Log("Event", e.Id, "P:", *e.ParentId)
-	})
 
 	foreach(events, func(e Event) {
 		assert.Equalf(t, StatusActive, e.Status, "failed on event with id: %v", e.Id)
@@ -152,6 +146,13 @@ func TestRepeatEventsOnCalendar(t *testing.T) {
 const den = "America/Denver"
 
 func TestUpdateTimeOnRepeatEvent(t *testing.T) {
+	// Events:
+	// #1 Jan 01 08:00-09:00
+	// #2 Jan 03 08:00-09:00
+	// #3 Jan 08 08:00-09:00
+	// #4 Jan 10 08:00-09:00
+	// #5 Jan 15 08:00-09:00
+	// #6 Jan 17 08:00-09:00
 	testCases := []struct {
 		name      string
 		eventId   int64
@@ -177,6 +178,113 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 			editType:  RepeatEditTypeThis,
 			times:     nil,
 			err:       ErrorEventNotFound.Error(),
+		},
+		{
+			name:      "no change",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "08:00",
+			endDay:    "2008-01-10",
+			endTime:   "09:00",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeThis,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-10 08:00 - 2008-01-10 09:00",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "single event time change",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "13:00",
+			endDay:    "2008-01-10",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeThis,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-10 13:00 - 2008-01-10 13:45",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "singe event time and day change",
+			eventId:   4,
+			startDay:  "2008-01-11",
+			startTime: "13:00",
+			endDay:    "2008-01-11",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeThis,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-11 13:00 - 2008-01-11 13:45",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "all event time changes",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "13:00",
+			endDay:    "2008-01-10",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeAll,
+			times: []string{
+				"2008-01-01 13:00 - 2008-01-01 13:45",
+				"2008-01-03 13:00 - 2008-01-03 13:45",
+				"2008-01-08 13:00 - 2008-01-08 13:45",
+				"2008-01-10 13:00 - 2008-01-10 13:45",
+				"2008-01-15 13:00 - 2008-01-15 13:45",
+				"2008-01-17 13:00 - 2008-01-17 13:45",
+			},
+		},
+		{
+			name:      "all events after or on event time change",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "13:00",
+			endDay:    "2008-01-10",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeThisAndAfter,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-10 13:00 - 2008-01-10 13:45",
+				"2008-01-15 13:00 - 2008-01-15 13:45",
+				"2008-01-17 13:00 - 2008-01-17 13:45",
+			},
+		},
+		{
+			name:      "invalid date change to all",
+			eventId:   4,
+			startDay:  "2008-01-11",
+			startTime: "08:00",
+			endDay:    "2008-01-11",
+			endTime:   "09:00",
+			zone:      den,
+			isAllDay:  false,
+			editType:  RepeatEditTypeAll,
+			err:       "something",
 		},
 	}
 
@@ -208,10 +316,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 			assert.Len(t, d.events, 6)
 			require.NotNil(t, a)
 
-			events, err := c.Query(Query{
-				Start: time.Date(2007, time.January, 1, 0, 0, 0, 0, time.UTC),
-				End:   time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC),
-			})
+			// get all events in the database
+			events, err := c.Query(Query{})
 			require.NoError(t, err)
 			assert.Len(t, events, 6)
 
@@ -228,9 +334,9 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 			var times []string
 			for _, e := range events {
 				if e.IsAllDay {
-					times = append(times, fmt.Sprintf("%s - %s %s", e.StartDay, e.EndDay, e.Zone))
+					times = append(times, fmt.Sprintf("%s - %s", e.StartDay, e.EndDay))
 				} else {
-					times = append(times, fmt.Sprintf("%sT%s - %sT%s %s", e.StartDay, e.StartTime, e.EndDay, e.EndTime, e.Zone))
+					times = append(times, fmt.Sprintf("%s %s - %s %s", e.StartDay, e.StartTime, e.EndDay, e.EndTime))
 				}
 			}
 			assert.Equal(t, tc.times, times)

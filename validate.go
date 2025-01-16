@@ -138,8 +138,26 @@ func ValidRepeat(e Event) error {
 	return nil
 }
 
-// ValidTimes makes sure that the start and end dates and times are valid values
-func ValidTimes(startDay, startTime, endDay, endTime, zone string, isAllDay bool) error {
+// ValidateTimeValues compares two HH:mm values to make sure they are
+// correctly formatted and start time is equal or before the end time
+func ValidateTimeValues(startTime, endTime string) error {
+	_, err := time.Parse(TimeFormat, startTime)
+	if err != nil {
+		return ErrorInvalidStartTime
+	}
+	_, err = time.Parse(TimeFormat, endTime)
+	if err != nil {
+		return ErrorInvalidEndTime
+	}
+	if startTime > endTime {
+		return ErrorStartTimeIsAfterEndTime
+	}
+	return nil
+}
+
+// ValidateDayValues compares two YYYY-MM-DD values to make sure they are
+// correctly formatted and start day is equal or before the end day
+func ValidateDayValues(startDay, endDay string) error {
 	_, err := time.Parse(time.DateOnly, startDay)
 	if err != nil {
 		return ErrorInvalidStartDay
@@ -148,15 +166,29 @@ func ValidTimes(startDay, startTime, endDay, endTime, zone string, isAllDay bool
 	if err != nil {
 		return ErrorInvalidEndDay
 	}
-	if !isAllDay {
-		_, err = time.Parse(TimeFormat, startTime)
-		if err != nil {
-			return ErrorInvalidStartTime
-		}
-		_, err = time.Parse(TimeFormat, endTime)
-		if err != nil {
-			return ErrorInvalidEndTime
-		}
+	if startDay > endDay {
+		return ErrorStartDayIsAfterEndDay
+	}
+	return nil
+}
+
+// ValidateDayTimeValues makes sure that the start and end dates and times are valid values
+func ValidateDayTimeValues(startDay, startTime, endDay, endTime string) error {
+	_, err := time.Parse(time.DateOnly, startDay)
+	if err != nil {
+		return ErrorInvalidStartDay
+	}
+	_, err = time.Parse(time.DateOnly, endDay)
+	if err != nil {
+		return ErrorInvalidEndDay
+	}
+	_, err = time.Parse(TimeFormat, startTime)
+	if err != nil {
+		return ErrorInvalidStartTime
+	}
+	_, err = time.Parse(TimeFormat, endTime)
+	if err != nil {
+		return ErrorInvalidEndTime
 	}
 	if startDay > endDay {
 		return ErrorStartDayIsAfterEndDay
@@ -164,9 +196,6 @@ func ValidTimes(startDay, startTime, endDay, endTime, zone string, isAllDay bool
 		return ErrorStartTimeIsAfterEndTime
 	}
 
-	_, err = time.LoadLocation(zone)
-	if err != nil {
-		return ErrorInvalidZone
-	}
+
 	return nil
 }

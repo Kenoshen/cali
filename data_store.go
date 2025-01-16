@@ -52,12 +52,12 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	event.Created = time.Now()
 	event.Updated = event.Created
 
-  // if the event is a repeating event, but doesn't have the ParentId
-  // field set, then this must be the first event of the repeat and 
-  // should also have its own Id as the ParentId
-  if event.IsRepeating && event.ParentId == nil {
-    event.ParentId = &event.Id
-  }
+	// if the event is a repeating event, but doesn't have the ParentId
+	// field set, then this must be the first event of the repeat and
+	// should also have its own Id as the ParentId
+	if event.IsRepeating && event.ParentId == nil {
+		event.ParentId = &event.Id
+	}
 
 	_, err = d.AddInvite(Invite{
 		EventId:    event.Id,
@@ -74,7 +74,7 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 }
 
 func (d *InMemoryDataStore) SetTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error {
-	if err := ValidTimes(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
+	if err := ValidateDayTimeValues(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
 		return err
 	}
 

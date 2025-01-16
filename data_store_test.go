@@ -2,7 +2,6 @@ package cali
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,6 +41,6 @@ func TestInMemoryDataStore(t *testing.T) {
 	assert.Len(t, d.events, 5)
 	assert.Len(t, d.invites, 5)
 
-	res, err := d.Query(Query{Start: time.Date(2007, time.January, 1, 0, 0, 0, 0, time.UTC), End: time.Date(2009, time.January, 1, 0, 0, 0, 0, time.UTC), Statuses: []Status{StatusActive}})
+	res, err := d.Query(Query{Statuses: []Status{StatusActive}})
 	assert.Len(t, res, 2)
 }

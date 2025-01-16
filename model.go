@@ -1,6 +1,7 @@
 package cali
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -59,6 +60,32 @@ type Event struct {
 	// UserData is a custom and optional blob of JSON saved to the event
 	UserData map[string]interface{}
 }
+
+// Start gets the time.Time value using the StartDay and StartTime fields
+func (e Event) Start() (time.Time, error) {
+	return parseDayTime(e.StartDay, e.StartTime)
+}
+
+// End gets the time.Time value using the EndDay and EndTime fields
+func (e Event) End() (time.Time, error) {
+	return parseDayTime(e.EndDay, e.EndTime)
+}
+
+// parseDayTime takes a day of YYYY-MM-DD and an hourMin as HH-mm (or "")
+// and converts it into a time.Time object
+func parseDayTime(day, hourMin string) (time.Time, error) {
+	if day == "" {
+		return time.Time{}, fmt.Errorf("invalid day value")
+	}
+	if hourMin == "" {
+		return time.Parse(time.DateOnly, day)
+	}
+
+	return time.Parse(DayTimeFormat, fmt.Sprintf("%s %s", day, hourMin))
+}
+
+// DayTimeFormat is the time package format style for YYYY-MM-DD HH:mm
+const DayTimeFormat = time.DateOnly + " 15:04"
 
 // TimeFormat is the time package format style for HH:mm
 const TimeFormat = "15:04"
@@ -246,9 +273,9 @@ func _t(t time.Time) *time.Time {
 
 type Query struct {
 	// Start is an inclusive timestamp and should be compared against the end timestamp of other events (overlap)
-	Start time.Time
+	Start *time.Time
 	// End is an inclusive timestamp and should be compared against the start timestamp of other events (overlap)
-	End time.Time
+	End *time.Time
 	// EventIds is a list of specific events that you want to query
 	EventIds []int64
 	// ParentIds is a list of parent ids that should be searched for and will find all events that have a match to the parent id
@@ -266,22 +293,28 @@ type Query struct {
 }
 
 func (q Query) Matches(event *Event) bool {
-	startDay := q.Start.Format(time.DateOnly)
-	startTime := q.Start.Format(TimeFormat)
-	endDay := q.End.Format(time.DateOnly)
-	endTime := q.End.Format(TimeFormat)
-	if event.StartDay > endDay {
-		return false
+	if q.Start != nil {
+		startDay := q.Start.Format(time.DateOnly)
+		startTime := q.Start.Format(TimeFormat)
+		if startDay > event.EndDay {
+			return false
+		}
+		if event.EndTime != "" && startDay+startTime > event.EndDay+event.EndTime {
+			return false
+		}
 	}
-	if event.EndDay < startDay {
-		return false
+
+	if q.End != nil {
+		endDay := q.End.Format(time.DateOnly)
+		endTime := q.End.Format(TimeFormat)
+		if endDay < event.StartDay {
+			return false
+		}
+		if event.StartTime != "" && endDay+endTime < event.StartDay+event.StartTime {
+			return false
+		}
 	}
-	if event.StartDay+event.StartTime > endDay+endTime {
-		return false
-	}
-	if event.EndDay+event.EndTime < startDay+startTime {
-		return false
-	}
+
 	found := false
 	if len(q.EventIds) > 0 {
 		for _, id := range q.EventIds {
@@ -293,10 +326,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.ParentIds) > 0 {
+		found = false
 		for _, id := range q.ParentIds {
 			if event.ParentId != nil && *event.ParentId == id {
 				found = true
@@ -306,10 +339,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.UserIds) > 0 {
+		found = false
 		for _, id := range q.UserIds {
 			if event.OwnerId == id {
 				found = true
@@ -319,10 +352,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.EventTypes) > 0 {
+		found = false
 		for _, eventType := range q.EventTypes {
 			if event.EventType == eventType {
 				found = true
@@ -332,10 +365,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.SourceIds) > 0 {
+		found = false
 		for _, id := range q.SourceIds {
 			if event.SourceId != nil && *event.SourceId == id {
 				found = true
@@ -345,10 +378,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.Statuses) > 0 {
+		found = false
 		for _, status := range q.Statuses {
 			if event.Status == status {
 				found = true
@@ -358,10 +391,10 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	if len(q.Text) > 0 {
+		found = false
 		for _, text := range q.Text {
 			if strings.Contains(event.Title, text) {
 				found = true
@@ -375,7 +408,6 @@ func (q Query) Matches(event *Event) bool {
 		if !found {
 			return false
 		}
-		found = false
 	}
 
 	return true
