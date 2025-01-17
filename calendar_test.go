@@ -24,7 +24,7 @@ func TestCalendar(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 	require.NotNil(t, a)
 
-	err = c.UpdateTime(a.Id, "2008-02-01", "10:00", "2008-02-01", "11:00", "America/Denver", false, RepeatEditTypeThis)
+	err = c.UpdateDayTime(a.Id, "2008-02-01", "10:00", "2008-02-01", "11:00", "America/Denver", false)
 	require.NoError(t, err)
 
 	originalStatus := a.Status
@@ -156,12 +156,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 	testCases := []struct {
 		name      string
 		eventId   int64
-		startDay  string
 		startTime string
-		endDay    string
 		endTime   string
-		zone      string
-		isAllDay  bool
 		editType  RepeatEditType
 		times     []string
 		err       string
@@ -169,12 +165,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 		{
 			name:      "event not found",
 			eventId:   -1,
-			startDay:  "2008-01-01",
 			startTime: "08:00",
-			endDay:    "2008-01-01",
 			endTime:   "09:00",
-			zone:      den,
-			isAllDay:  false,
 			editType:  RepeatEditTypeThis,
 			times:     nil,
 			err:       ErrorEventNotFound.Error(),
@@ -182,12 +174,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 		{
 			name:      "no change",
 			eventId:   4,
-			startDay:  "2008-01-10",
 			startTime: "08:00",
-			endDay:    "2008-01-10",
 			endTime:   "09:00",
-			zone:      den,
-			isAllDay:  false,
 			editType:  RepeatEditTypeThis,
 			times: []string{
 				"2008-01-01 08:00 - 2008-01-01 09:00",
@@ -201,12 +189,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 		{
 			name:      "single event time change",
 			eventId:   4,
-			startDay:  "2008-01-10",
 			startTime: "13:00",
-			endDay:    "2008-01-10",
 			endTime:   "13:45",
-			zone:      den,
-			isAllDay:  false,
 			editType:  RepeatEditTypeThis,
 			times: []string{
 				"2008-01-01 08:00 - 2008-01-01 09:00",
@@ -218,33 +202,10 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 			},
 		},
 		{
-			name:      "singe event time and day change",
-			eventId:   4,
-			startDay:  "2008-01-11",
-			startTime: "13:00",
-			endDay:    "2008-01-11",
-			endTime:   "13:45",
-			zone:      den,
-			isAllDay:  false,
-			editType:  RepeatEditTypeThis,
-			times: []string{
-				"2008-01-01 08:00 - 2008-01-01 09:00",
-				"2008-01-03 08:00 - 2008-01-03 09:00",
-				"2008-01-08 08:00 - 2008-01-08 09:00",
-				"2008-01-11 13:00 - 2008-01-11 13:45",
-				"2008-01-15 08:00 - 2008-01-15 09:00",
-				"2008-01-17 08:00 - 2008-01-17 09:00",
-			},
-		},
-		{
 			name:      "all event time changes",
 			eventId:   4,
-			startDay:  "2008-01-10",
 			startTime: "13:00",
-			endDay:    "2008-01-10",
 			endTime:   "13:45",
-			zone:      den,
-			isAllDay:  false,
 			editType:  RepeatEditTypeAll,
 			times: []string{
 				"2008-01-01 13:00 - 2008-01-01 13:45",
@@ -258,12 +219,8 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 		{
 			name:      "all events after or on event time change",
 			eventId:   4,
-			startDay:  "2008-01-10",
 			startTime: "13:00",
-			endDay:    "2008-01-10",
 			endTime:   "13:45",
-			zone:      den,
-			isAllDay:  false,
 			editType:  RepeatEditTypeThisAndAfter,
 			times: []string{
 				"2008-01-01 08:00 - 2008-01-01 09:00",
@@ -273,18 +230,6 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 				"2008-01-15 13:00 - 2008-01-15 13:45",
 				"2008-01-17 13:00 - 2008-01-17 13:45",
 			},
-		},
-		{
-			name:      "invalid date change to all",
-			eventId:   4,
-			startDay:  "2008-01-11",
-			startTime: "08:00",
-			endDay:    "2008-01-11",
-			endTime:   "09:00",
-			zone:      den,
-			isAllDay:  false,
-			editType:  RepeatEditTypeAll,
-			err:       "something",
 		},
 	}
 
@@ -321,15 +266,176 @@ func TestUpdateTimeOnRepeatEvent(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, events, 6)
 
-			err = c.UpdateTime(tc.eventId, tc.startDay, tc.startTime, tc.endDay, tc.endTime, tc.zone, tc.isAllDay, tc.editType)
-			if tc.err == "" {
-				require.NoError(t, err)
-			} else {
+			err = c.UpdateTime(tc.eventId, tc.startTime, tc.endTime, tc.editType)
+			if tc.err != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)
 				// stop processing if there is an error here
 				return
 			}
+			require.NoError(t, err)
+
+			var times []string
+			for _, e := range events {
+				if e.IsAllDay {
+					times = append(times, fmt.Sprintf("%s - %s", e.StartDay, e.EndDay))
+				} else {
+					times = append(times, fmt.Sprintf("%s %s - %s %s", e.StartDay, e.StartTime, e.EndDay, e.EndTime))
+				}
+			}
+			assert.Equal(t, tc.times, times)
+		})
+	}
+
+}
+
+func TestUpdateDayTimeOnRepeatEvent(t *testing.T) {
+	// Events:
+	// #1 Jan 01 08:00-09:00
+	// #2 Jan 03 08:00-09:00
+	// #3 Jan 08 08:00-09:00
+	// #4 Jan 10 08:00-09:00
+	// #5 Jan 15 08:00-09:00
+	// #6 Jan 17 08:00-09:00
+	testCases := []struct {
+		name      string
+		eventId   int64
+		startDay  string
+		startTime string
+		endDay    string
+		endTime   string
+		zone      string
+		isAllDay  bool
+		times     []string
+		err       string
+	}{
+		{
+			name:      "event not found",
+			eventId:   -1,
+			startDay:  "2008-01-01",
+			startTime: "08:00",
+			endDay:    "2008-01-01",
+			endTime:   "09:00",
+			zone:      den,
+			isAllDay:  false,
+			times:     nil,
+			err:       ErrorEventNotFound.Error(),
+		},
+		{
+			name:      "no change",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "08:00",
+			endDay:    "2008-01-10",
+			endTime:   "09:00",
+			zone:      den,
+			isAllDay:  false,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-10 08:00 - 2008-01-10 09:00",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "single event time change",
+			eventId:   4,
+			startDay:  "2008-01-10",
+			startTime: "13:00",
+			endDay:    "2008-01-10",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-10 13:00 - 2008-01-10 13:45",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "single event day change",
+			eventId:   4,
+			startDay:  "2008-01-11",
+			startTime: "08:00",
+			endDay:    "2008-01-11",
+			endTime:   "09:00",
+			zone:      den,
+			isAllDay:  false,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-11 08:00 - 2008-01-11 09:00",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+		{
+			name:      "single event time and day change",
+			eventId:   4,
+			startDay:  "2008-01-11",
+			startTime: "13:00",
+			endDay:    "2008-01-11",
+			endTime:   "13:45",
+			zone:      den,
+			isAllDay:  false,
+			times: []string{
+				"2008-01-01 08:00 - 2008-01-01 09:00",
+				"2008-01-03 08:00 - 2008-01-03 09:00",
+				"2008-01-08 08:00 - 2008-01-08 09:00",
+				"2008-01-11 13:00 - 2008-01-11 13:45",
+				"2008-01-15 08:00 - 2008-01-15 09:00",
+				"2008-01-17 08:00 - 2008-01-17 09:00",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Log(tc.name)
+			t.Parallel()
+
+			d := &InMemoryDataStore{}
+			c := NewCalendar(d)
+
+			a, count, err := c.Create(Event{
+				StartDay:    "2008-01-01",
+				StartTime:   "08:00",
+				EndDay:      "2008-01-01",
+				EndTime:     "09:00",
+				Zone:        "America/Denver",
+				IsAllDay:    false,
+				IsRepeating: true,
+				Repeat: &Repeat{
+					RepeatType:     RepeatTypeWeekly,
+					DayOfWeek:      DayOfWeekTuesday | DayOfWeekThursday,
+					RepeatStopDate: _t(time.Date(2008, time.January, 17, 0, 0, 0, 0, time.UTC)),
+				},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, int64(6), count)
+			assert.Len(t, d.events, 6)
+			require.NotNil(t, a)
+
+			// get all events in the database
+			events, err := c.Query(Query{})
+			require.NoError(t, err)
+			assert.Len(t, events, 6)
+
+			err = c.UpdateDayTime(tc.eventId, tc.startDay, tc.startTime, tc.endDay, tc.endTime, tc.zone, tc.isAllDay)
+			if tc.err != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.err)
+				// stop processing if there is an error here
+				return
+			}
+			require.NoError(t, err)
 
 			var times []string
 			for _, e := range events {

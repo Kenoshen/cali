@@ -88,53 +88,20 @@ func (c *Calendar) Create(e Event) (*Event, int64, error) {
 
 // UpdateTime changes the time values of the event and repeated events
 func (c *Calendar) UpdateTime(eventId int64, startTime string, endTime string, editType RepeatEditType) error {
-	if err := ValidTimes(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
+	if err := ValidateTimeValues(startTime, endTime); err != nil {
 		return err
 	}
 	return c.applyEditBasedOnRepeatEditType(editType, eventId, func(eventId int64) error {
-	  return c.dataStore.SetTime(eventId, startDay, startTime, endDay, endTime, zone, isAllDay)
+		return c.dataStore.SetTime(eventId, startTime, endTime)
 	})
+}
 
-
-	if editType == RepeatEditTypeThis {
+// UpdateDayTime changes the day and time values of a single event
+func (c *Calendar) UpdateDayTime(eventId int64, startDay, startTime, endDay, endTime string, zone string, isAllDay bool) error {
+	if err := ValidateDayTimeValues(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
+		return err
 	}
-
-	switch editType {
-	case RepeatEditTypeThis:
-	case RepeatEditTypeAll:
-		e, err := c.Get(eventId)
-		if err != nil {
-			return err
-		}
-		if e == nil {
-			return ErrorEventNotFound
-		}
-		events, err := c.getAllRepeatingEvents(*e)
-		for _, event := range events {
-			err = f(event.Id)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-
-	case RepeatEditTypeThisAndAfter:
-		e, err := c.Get(eventId)
-		if err != nil {
-			return err
-		}
-		if e == nil {
-			return ErrorEventNotFound
-		}
-		events, err := c.getAllRepeatingEventsThisAndAfter(*e)
-		for _, event := range events {
-			err = f(event.Id)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	return c.dataStore.SetDayTime(eventId, startDay, startTime, endDay, endTime, zone, isAllDay)
 }
 
 // Cancel sets the status of the event to StatusCanceled

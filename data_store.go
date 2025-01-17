@@ -8,7 +8,9 @@ type DataStore interface {
 	// Create should save an event in the data store and handle setting the Created and Updated and Id fields
 	Create(event Event) (*Event, error)
 	// SetTime updates the time values for a specific event
-	SetTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error
+	SetTime(eventId int64, startTime, endTime string) error
+	// SetDayTime updates the day and time values for a specific event
+	SetDayTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error
 	// SetStatus applies the given status to the event. If the event already has the status it returns nil
 	SetStatus(eventId int64, status Status) error
 	// SetTitle updates the event with the given title
@@ -73,7 +75,22 @@ func (d *InMemoryDataStore) Create(event Event) (*Event, error) {
 	return &event, nil
 }
 
-func (d *InMemoryDataStore) SetTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error {
+func (d *InMemoryDataStore) SetTime(eventId int64, startTime, endTime string) error {
+	if err := ValidateTimeValues(startTime, endTime); err != nil {
+		return err
+	}
+
+	for _, other := range d.events {
+		if other.Id == eventId {
+			other.StartTime = startTime
+			other.EndTime = endTime
+			return nil
+		}
+	}
+	return ErrorEventNotFound
+}
+
+func (d *InMemoryDataStore) SetDayTime(eventId int64, startDay, startTime, endDay, endTime, zone string, isAllDay bool) error {
 	if err := ValidateDayTimeValues(startDay, startTime, endDay, endTime, zone, isAllDay); err != nil {
 		return err
 	}

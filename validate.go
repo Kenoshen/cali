@@ -33,11 +33,12 @@ var (
 	ErrorInvalidStatus                = errors.New("invalid status")
 	ErrorInviteNotFound               = errors.New("invitation not found")
 	ErrorInvalidRepeatEditType        = errors.New("invalid repeat edit type")
+	ErrorAllDayCantHaveTimes          = errors.New("all day events cant have times")
 )
 
 // VAlidate makes sure the event object doesn't have conflicting values
 func Validate(e Event) error {
-	if err := ValidTimes(e.StartDay, e.StartTime, e.EndDay, e.EndTime, e.Zone, e.IsAllDay); err != nil {
+	if err := ValidateDayTimeValues(e.StartDay, e.StartTime, e.EndDay, e.EndTime, e.Zone, e.IsAllDay); err != nil {
 		return err
 	}
 
@@ -173,7 +174,7 @@ func ValidateDayValues(startDay, endDay string) error {
 }
 
 // ValidateDayTimeValues makes sure that the start and end dates and times are valid values
-func ValidateDayTimeValues(startDay, startTime, endDay, endTime string) error {
+func ValidateDayTimeValues(startDay, startTime, endDay, endTime string, zone string, isAllDay bool) error {
 	_, err := time.Parse(time.DateOnly, startDay)
 	if err != nil {
 		return ErrorInvalidStartDay
@@ -182,13 +183,18 @@ func ValidateDayTimeValues(startDay, startTime, endDay, endTime string) error {
 	if err != nil {
 		return ErrorInvalidEndDay
 	}
-	_, err = time.Parse(TimeFormat, startTime)
-	if err != nil {
-		return ErrorInvalidStartTime
+	if isAllDay && (startTime != "" || endTime != "") {
+		return ErrorAllDayCantHaveTimes
 	}
-	_, err = time.Parse(TimeFormat, endTime)
-	if err != nil {
-		return ErrorInvalidEndTime
+	if !isAllDay {
+		_, err = time.Parse(TimeFormat, startTime)
+		if err != nil {
+			return ErrorInvalidStartTime
+		}
+		_, err = time.Parse(TimeFormat, endTime)
+		if err != nil {
+			return ErrorInvalidEndTime
+		}
 	}
 	if startDay > endDay {
 		return ErrorStartDayIsAfterEndDay
@@ -196,6 +202,13 @@ func ValidateDayTimeValues(startDay, startTime, endDay, endTime string) error {
 		return ErrorStartTimeIsAfterEndTime
 	}
 
+	l, err := time.LoadLocation(zone)
+	if err != nil {
+		return ErrorInvalidZone
+	}
+	if l == nil {
+		return ErrorInvalidZone
+	}
 
 	return nil
 }
