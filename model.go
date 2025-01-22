@@ -163,6 +163,9 @@ func (i Invite) String() string {
 	return fmt.Sprintf("{Event:%v, User:%v, Status:%v, Perm:%v}", i.EventId, i.UserId, i.Status, i.Permission)
 }
 
+// InviteStatus conveys the invitation status of this invitation. Statuses that are equal or
+// greater to zero will be considered positive statuses for the purpose of showing the event
+// on that user's calendar. Anything less than 0 will be hidden on the user's calendar.
 type InviteStatus int64
 
 const (

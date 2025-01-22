@@ -205,7 +205,7 @@ func TestValidateInvite(t *testing.T) {
 		{
 			desc: "invalid invite status",
 			in: Invite{
-				Status: InviteStatus(-1),
+				Status: InviteStatus(-23),
 			},
 			err: ErrorInvalidInviteStatus,
 		}, {
