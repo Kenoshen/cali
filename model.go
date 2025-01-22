@@ -74,6 +74,29 @@ func (e Event) End() (time.Time, error) {
 	return parseDayTime(e.EndDay, e.EndTime)
 }
 
+const iCalDateTimeFormat = "20060102T150400Z"
+
+// MarshallToICal marshalls this event to an ical format
+func (e Event) MarshallToICal() string {
+	start, _ := e.Start()
+	end, _ := e.Start()
+	s := []string{
+		"BEGIN:VEVENT",
+		fmt.Sprintf("UID:%v", e.Id),
+		fmt.Sprintf("DTSTAMP:%v", start.Format(iCalDateTimeFormat)),
+		fmt.Sprintf("DTSTART:%v", start.Format(iCalDateTimeFormat)),
+		fmt.Sprintf("DTEND:%v", end.Format(iCalDateTimeFormat)),
+		fmt.Sprintf("SUMMARY:%v", strings.ReplaceAll(e.Title, "\n", " ")),
+		"CLASS:PRIVATE",
+	}
+	if e.Description != nil && len(*e.Description) > 0 {
+		s = append(s, fmt.Sprintf("DESCRIPTION:", *e.Description))
+	}
+
+	s = append(s, "END:VEVENT")
+	return strings.Join(s, "\n")
+}
+
 // parseDayTime takes a day of YYYY-MM-DD and an hourMin as HH-mm (or "")
 // and converts it into a time.Time object
 func parseDayTime(day, hourMin string) (time.Time, error) {
