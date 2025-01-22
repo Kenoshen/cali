@@ -90,7 +90,7 @@ func (e Event) MarshallToICal() string {
 		"CLASS:PRIVATE",
 	}
 	if e.Description != nil && len(*e.Description) > 0 {
-		s = append(s, fmt.Sprintf("DESCRIPTION:", *e.Description))
+		s = append(s, fmt.Sprintf("DESCRIPTION:%v", *e.Description))
 	}
 
 	s = append(s, "END:VEVENT")
