@@ -76,6 +76,99 @@ func TestCalendar(t *testing.T) {
 	assert.Equal(t, InviteStatusDeclined, invite.Status)
 }
 
+func TestCalendarQueries(t *testing.T) {
+	testCases := []struct {
+		name string
+		q    Query
+		out  []int
+		err  string
+	}{
+		{
+			name: "active events for user",
+			q: Query{
+				UserIds:  []int64{1},
+				Statuses: []Status{StatusActive},
+			},
+			out: []int{1, 3, 5, 6, 7, 8, 9},
+		},
+		{
+			name: "active events for other user",
+			q: Query{
+				UserIds:  []int64{2},
+				Statuses: []Status{StatusActive},
+			},
+			out: []int{2, 4, 6, 7, 8, 9},
+		},
+		{
+			name: "active events for multiple users",
+			q: Query{
+				UserIds:  []int64{1, 2},
+				Statuses: []Status{StatusActive},
+			},
+			out: []int{1, 2, 3, 4, 5, 6, 7, 8, 9},
+		},
+		{
+			name: "event types",
+			q: Query{
+				EventTypes: []int64{5, 2},
+			},
+			out: []int{2, 5},
+		},
+		{
+			name: "event ids",
+			q: Query{
+				EventTypes: []int64{3, 7},
+			},
+			out: []int{3, 7},
+		},
+	}
+	setupCalendar := func(t *testing.T) (*Calendar, *InMemoryDataStore) {
+		d := &InMemoryDataStore{}
+		c := NewCalendar(d)
+		for day := 1; day < 10; day++ {
+			dayStr := fmt.Sprintf("2008-01-0%d", day)
+			owner := int64((day+1)%2 + 1) // odd day = 1, even day = 2
+			_, count, err := c.Create(Event{
+				Id:        int64(day),
+				OwnerId:   owner,
+				EventType: int64(day),
+				StartDay:  dayStr,
+				EndDay:    dayStr,
+				IsAllDay:  true,
+			})
+			require.NoError(t, err)
+			require.Equal(t, int64(1), count, "failed to create event")
+			if day > 5 {
+				other := int64(day%2 + 1) // odd day = 2, even day = 1
+				err = c.InviteUser(int64(day), other, PermissionInvitee, RepeatEditTypeThis)
+				require.NoError(t, err)
+			}
+		}
+		return c, d
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Log(tc.name)
+			t.Parallel()
+			c, _ := setupCalendar(t)
+
+			outEvents, err := c.Query(tc.q)
+			if tc.err != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.err)
+				return
+			}
+			require.NoError(t, err)
+			var out []int
+			for _, e := range outEvents {
+				out = append(out, int(e.Id))
+			}
+			assert.Equal(t, tc.out, out)
+		})
+	}
+}
+
 func TestRepeatEventsOnCalendar(t *testing.T) {
 	d := &InMemoryDataStore{}
 	c := NewCalendar(d)

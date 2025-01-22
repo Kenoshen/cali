@@ -174,9 +174,23 @@ func (d *InMemoryDataStore) Get(eventId int64) (*Event, error) {
 
 func (d *InMemoryDataStore) Query(q Query) ([]*Event, error) {
 	var result []*Event
-
 	for _, event := range d.events {
-		if q.Matches(event) {
+		if !q.Matches(event) {
+			continue
+		}
+		found := false
+		for _, userId := range q.UserIds {
+			for _, inv := range d.invites {
+				if event.Id == inv.EventId && inv.UserId == userId && inv.Status >= 0 {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if found || len(q.UserIds) == 0 {
 			result = append(result, event)
 		}
 	}

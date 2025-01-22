@@ -7,58 +7,61 @@ import (
 	"time"
 )
 
+// Event is a single record of an event and also contains links to other events through
+// the parent id as well as a ref to the repeat logic used to create the event if it is
+// a repeating event.
 type Event struct {
 	// Id is the unique id for this event
-	Id int64
+	Id int64 `json:"id"`
 	// SourceId represents an id for an external source object that this event is directly tied to
-	SourceId *int64
+	SourceId *int64 `json:"sourceId"`
 	// ParentId is the id of another event that this event is related to via repeating events
 	// and can be used to update other related repeating events when this one changes
-	ParentId *int64
+	ParentId *int64 `json:"parentId"`
 	// OwnerId is the id of the user that created this event
-	OwnerId int64
+	OwnerId int64 `json:"ownerId"`
 	// EventType represents the overall type of the event. This is just an int, so you can set this
 	// to what ever you would like
-	EventType EventType
+	EventType EventType `json:"eventType"`
 
 	// Title is the value that will be shown for this event when displayed on a calendar interface
-	Title string
+	Title string `json:"title"`
 	// Description is a longer field description of what the event is
-	Description *string
+	Description *string `json:"description"`
 	// Url is a quick way to set the destination on an event that is clicked on in an interface
-	Url *string
+	Url *string `json:"url"`
 	// Status represents the current status of the event, defaults to active, but events can also
 	// be canceled or removed
-	Status Status
+	Status Status `json:"status"`
 
 	// IsAllDay is true if the event is an all day event which will set the time values to 00:00
-	IsAllDay bool
+	IsAllDay bool `json:"isAllDay"`
 
 	// IsRepeating is true if this event is a part of a repeating series
-	IsRepeating bool
+	IsRepeating bool `json:"isRepeating"`
 	// Repeat is the pattern to repeat the event
-	Repeat *Repeat
+	Repeat *Repeat `json:"repeat"`
 
 	// Zone must be a valid time.Location name like "UTC" or "America/New_York"
-	Zone string
+	Zone string `json:"zone"`
 
 	// StartDay is the YYYY-MM-DD value representing the start day of this event
-	StartDay string
+	StartDay string `json:"startDay"`
 	// StartTime is the HH:MM value representing the start time of this event
-	StartTime string
+	StartTime string `json:"startTime"`
 
 	// EndDay is the YYYY-MM-DD value representing the end day of this event
-	EndDay string
+	EndDay string `json:"endDay"`
 	// EndTime is the HH:MM value representing the end time of this event
-	EndTime string
+	EndTime string `json:"endTime"`
 
 	// Created is a UTC timestamp for when the event was created
-	Created time.Time
+	Created time.Time `json:"created"`
 	// Updated is a UTC timestamp for when the event was modified last
-	Updated time.Time
+	Updated time.Time `json:"updated"`
 
 	// UserData is a custom and optional blob of JSON saved to the event
-	UserData map[string]interface{}
+	UserData map[string]interface{} `json:"userData"`
 }
 
 // Start gets the time.Time value using the StartDay and StartTime fields
@@ -156,6 +159,10 @@ type Invite struct {
 	Updated time.Time
 }
 
+func (i Invite) String() string {
+	return fmt.Sprintf("{Event:%v, User:%v, Status:%v, Perm:%v}", i.EventId, i.UserId, i.Status, i.Permission)
+}
+
 type InviteStatus int64
 
 const (
@@ -166,9 +173,9 @@ const (
 	InviteStatusConfirmed InviteStatus = 1
 	// InviteStatusDeclined is when the user decides tho not attend the event, if all users decline an event
 	// it becomes abandoned
-	InviteStatusDeclined InviteStatus = 2
+	InviteStatusDeclined InviteStatus = -1
 	// InviteStatusRevoked is when a user with the correct permission forcibly removes a user's invitation
-	InviteStatusRevoked InviteStatus = -1
+	InviteStatusRevoked InviteStatus = -2
 )
 
 type Bitmask uint32
@@ -210,20 +217,22 @@ const MaxRepeatOccurrence int64 = 30
 // MaxRepeatDuration is set to 2 years
 const MaxRepeatDuration = time.Duration(24*365*2) * time.Hour
 
+// Repeat contains all of the values required to be able to repeat an event
+// over a period of time or for a number of occurrences
 type Repeat struct {
 	// RepeatType is a enumeration of the valid types of repeat events (daily,
 	// weekly, monthly, or yearly)
-	RepeatType RepeatType
+	RepeatType RepeatType `json:"repeatType"`
 	// DayOfWeek is a bitmask of the days of the week (SMTWTFS)
-	DayOfWeek DayOfWeek
+	DayOfWeek DayOfWeek `json:"dayOfWeek"`
 	// RepeatOccurrences is a number of times the event should repeat.
 	// It should be 0 if RepeatStopDate is not nil.
 	// It can't be more than MaxRepeatOccurrence.
-	RepeatOccurrences int64
+	RepeatOccurrences int64 `json:"repeatOccrrences"`
 	// RepeatStopDate is a timestamp for when the repeating event should stop.
 	// It should be nil if RepeatOccurrences > 1.
 	// It can't be more than MaxRepeatDuration.
-	RepeatStopDate *time.Time
+	RepeatStopDate *time.Time `json:"repeatStopDate"`
 }
 
 type RepeatType int64
@@ -271,6 +280,7 @@ func _t(t time.Time) *time.Time {
 	return &t
 }
 
+// Query is the object that the data store uses to try and find the list of matching events
 type Query struct {
 	// Start is an inclusive timestamp and should be compared against the end timestamp of other events (overlap)
 	Start *time.Time
@@ -280,7 +290,8 @@ type Query struct {
 	EventIds []int64
 	// ParentIds is a list of parent ids that should be searched for and will find all events that have a match to the parent id
 	ParentIds []int64
-	// UserIds is a check if the user has an invite record for the event that is not declined
+	// UserIds is a check if the user has an invite record for the event that is not
+	// declined or revoked
 	UserIds []int64
 	// EventTypes is a check if the event has a specific event type
 	EventTypes []EventType
@@ -292,7 +303,12 @@ type Query struct {
 	Text []string
 }
 
+// Matches does a local check if the given event matches the query
 func (q Query) Matches(event *Event) bool {
+	if event == nil {
+		return false
+	}
+
 	if q.Start != nil {
 		startDay := q.Start.Format(time.DateOnly)
 		startTime := q.Start.Format(TimeFormat)
@@ -332,19 +348,6 @@ func (q Query) Matches(event *Event) bool {
 		found = false
 		for _, id := range q.ParentIds {
 			if event.ParentId != nil && *event.ParentId == id {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	if len(q.UserIds) > 0 {
-		found = false
-		for _, id := range q.UserIds {
-			if event.OwnerId == id {
 				found = true
 				break
 			}
