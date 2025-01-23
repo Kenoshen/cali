@@ -13,6 +13,8 @@ import (
 type Event struct {
 	// Id is the unique id for this event
 	Id int64 `json:"id"`
+	// CalendarId represents the calendar group this event is a part of
+	CalendarId int64 `json:"calendarId"`
 	// SourceId represents an id for an external source object that this event is directly tied to
 	SourceId *int64 `json:"sourceId"`
 	// ParentId is the id of another event that this event is related to via repeating events
@@ -314,6 +316,8 @@ type Query struct {
 	End *time.Time
 	// EventIds is a list of specific events that you want to query
 	EventIds []int64
+	// CalendarIds is a list of specific calendars that you want to query
+	CalendarIds []int64
 	// ParentIds is a list of parent ids that should be searched for and will find all events that have a match to the parent id
 	ParentIds []int64
 	// UserIds is a check if the user has an invite record for the event that is not
@@ -361,6 +365,19 @@ func (q Query) Matches(event *Event) bool {
 	if len(q.EventIds) > 0 {
 		for _, id := range q.EventIds {
 			if event.Id == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	if len(q.CalendarIds) > 0 {
+		found = false
+		for _, id := range q.CalendarIds {
+			if event.CalendarId == id {
 				found = true
 				break
 			}
