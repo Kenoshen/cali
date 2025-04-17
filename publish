@@ -8,9 +8,9 @@ last=`git describe --tags --abbrev=0`
 # split on v and . to get the array of version digits
 IFS='v.' read -r -a array <<< "$last"
 
-major="${array[1]}"
-minor="${array[2]}"
-patch="${array[3]}"
+major="${array[0]}"
+minor="${array[1]}"
+patch="${array[2]}"
 
 echo "From: v$major.$minor.$patch"
 
