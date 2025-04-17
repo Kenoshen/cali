@@ -31,6 +31,14 @@ fi
 tag="v$major.$minor.$patch"
 echo "To:   $tag"
 
+read -p "Continue? [y/n]" -n 1 -r
+echo    # move to a new line
+if [[ $REPLY =~ ^[^Y^y]$ ]]
+then
+  echo "Must recieve a Y or y to continue. Exiting."
+  exit 1
+fi
+
 echo "Git Tag"
 git tag $tag
 
